@@ -1,0 +1,52 @@
+.home-landing {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 60px;
+}
+
+.hero-section {
+  text-align: center;
+  margin-top: 60px;
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #ff6a00, #ee0979, #43cea2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+    /* text-fill-color: transparent; removed for compatibility */
+}
+
+.btn-primary {
+  background: linear-gradient(90deg, #ff6a00, #ee0979);
+  border: none;
+}
+
+
+.features-section {
+  width: 100%;
+  max-width: 1600px;
+}
+
+.website-feature-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+  min-height: 320px;
+  width: 100%;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.website-feature-card:hover {
+  transform: translateY(-8px) scale(1.04);
+  box-shadow: 0 8px 32px rgba(255,106,0,0.10), 0 2px 8px rgba(0,0,0,0.10);
+}
+
+.feature-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+}

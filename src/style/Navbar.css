@@ -1,0 +1,33 @@
+/* Navbar custom styles */
+.navbar {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 1.1rem;
+  background: #2a3654;
+  box-shadow:#2a3654;
+}
+.navbar-brand {
+  background: linear-gradient(90deg, #ff6a00, #ee0979, #43cea2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  /* text-fill-color: transparent; removed for compatibility */
+}
+
+.nav-link {
+  color: #fff !important;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.nav-link:hover {
+  color: #ff6a00 !important;
+}
+
+/* Highlight active navbar tab */
+.nav-link.active {
+  color: #ff6a00 !important;
+  background: linear-gradient(90deg, #ff6a00 0%, #ee0979 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 8px rgba(255,106,0,0.15);
+}
