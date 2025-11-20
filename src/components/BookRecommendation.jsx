@@ -1,15 +1,16 @@
 import React, { useState, useCallback, useEffect } from "react";
 import SearchBar from "./SearchBar";
 import FeaturedBooks from "./FeaturedBooks";
+import { apiUrl } from '../utils/apiUrl';
 
 const BookRecommendation = () => {
 	const [books, setBooks] = useState([]);
-	const [searchQuery, setSearchQuery] = useState("story books");
+	const [searchQuery, setSearchQuery] = useState('story books');
 	const [favourites, setFavourites] = useState([]);
 	const [library, setLibrary] = useState({});
 
 	useEffect(() => {
-		fetchBooks(""); // Load default books initially
+		fetchBooks(''); // Load default books initially
 		fetchUserData(); // Load user's favorites and library
 	}, []);
 
@@ -19,27 +20,29 @@ const BookRecommendation = () => {
 
 		try {
 			// Fetch favorites
-			const favResponse = await fetch('/api/user/favorites', {
+			const favResponse = await fetch(apiUrl('/api/user/favorites'), {
 				method: 'GET',
 				headers: {
-					'Authorization': `Bearer ${token}`,
+					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json'
 				}
 			});
-			
+
 			if (favResponse.ok) {
 				const favData = await favResponse.json();
 				setFavourites(favData);
 			}
 
-		// Fetch library
-		const libResponse = await fetch('/api/user/library', {
-			method: 'GET',
-			headers: {
-				'Authorization': `Bearer ${token}`,
-				'Content-Type': 'application/json'
-			}
-		});			if (libResponse.ok) {
+			// Fetch library
+			const libResponse = await fetch(apiUrl('/api/user/library'), {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				}
+			});
+
+			if (libResponse.ok) {
 				const libData = await libResponse.json();
 				setLibrary(libData);
 			}
@@ -54,14 +57,14 @@ const BookRecommendation = () => {
 		if (!token) return;
 
 		try {
-			const libResponse = await fetch('/api/user/library', {
+			const libResponse = await fetch(apiUrl('/api/user/library'), {
 				method: 'GET',
 				headers: {
-					'Authorization': `Bearer ${token}`,
+					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json'
 				}
 			});
-			
+
 			if (libResponse.ok) {
 				const libData = await libResponse.json();
 				setLibrary(libData);
@@ -81,13 +84,13 @@ const BookRecommendation = () => {
 
 		try {
 			const isCurrentlyFav = favourites.some((b) => b.googleId === book.googleId);
-			
+
 			if (isCurrentlyFav) {
 				// Remove from favorites
-				const response = await fetch(`http://localhost:5000/api/user/favorites/${book.googleId}`, {
+				const response = await fetch(apiUrl(`/api/user/favorites/${book.googleId}`), {
 					method: 'DELETE',
 					headers: {
-						'Authorization': `Bearer ${token}`,
+						Authorization: `Bearer ${token}`,
 						'Content-Type': 'application/json'
 					}
 				});
@@ -106,10 +109,10 @@ const BookRecommendation = () => {
 					description: book.description || ''
 				};
 
-				const response = await fetch('/api/user/favorites', {
+				const response = await fetch(apiUrl('/api/user/favorites'), {
 					method: 'POST',
 					headers: {
-						'Authorization': `Bearer ${token}`,
+						Authorization: `Bearer ${token}`,
 						'Content-Type': 'application/json'
 					},
 					body: JSON.stringify({ book: bookData })
@@ -143,10 +146,10 @@ const BookRecommendation = () => {
 				listName: listName
 			};
 
-			const response = await fetch('/api/user/library', {
+			const response = await fetch(apiUrl('/api/user/library'), {
 				method: 'POST',
 				headers: {
-					'Authorization': `Bearer ${token}`,
+					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify(bookData)
@@ -167,8 +170,8 @@ const BookRecommendation = () => {
 		}
 	};
 
-	const fetchBooks = useCallback((query = "", genre = "") => {
-		let finalQuery = query.trim() || "story books";
+	const fetchBooks = useCallback((query = '', genre = '') => {
+		let finalQuery = query.trim() || 'story books';
 		if (genre) finalQuery += `+subject:${genre}`;
 
 		setSearchQuery(finalQuery);
@@ -182,25 +185,25 @@ const BookRecommendation = () => {
 						googleId: item.id, // Add googleId for consistency
 						title: item.volumeInfo.title,
 						author: item.volumeInfo.authors
-							? item.volumeInfo.authors.join(", ")
-							: "Unknown",
+							? item.volumeInfo.authors.join(', ')
+							: 'Unknown',
 						image: item.volumeInfo.imageLinks
 							? item.volumeInfo.imageLinks.thumbnail
-							: "/images/no_cover.jpg",
-						description: item.volumeInfo.description || ""
+							: '/images/no_cover.jpg',
+						description: item.volumeInfo.description || ''
 					}));
 					setBooks(bookData);
 				} else {
 					setBooks([]);
 				}
 			})
-			.catch((err) => console.error("Error fetching books:", err));
+			.catch((err) => console.error('Error fetching books:', err));
 	}, []);
 
-	const genres = ["Fiction", "Non-Fiction", "Mystery", "Romance", "Sci-Fi", "Fantasy", "Biography", "History"];
+	const genres = ['Fiction', 'Non-Fiction', 'Mystery', 'Romance', 'Sci-Fi', 'Fantasy', 'Biography', 'History'];
 
 	return (
-		<div style={{ backgroundColor: "#111", minHeight: "100vh", color: "#fff" }}>
+		<div style={{ backgroundColor: '#111', minHeight: '100vh', color: '#fff' }}>
 			<div className="container py-5">
 				<div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2.5rem' }}>
 					<h1 style={{
@@ -211,7 +214,7 @@ const BookRecommendation = () => {
 						margin: 0,
 						padding: '0.5rem 0',
 						textAlign: 'center',
-						fontFamily: 'Segoe UI, Arial, sans-serif',
+						fontFamily: 'Segoe UI, Arial, sans-serif'
 					}}>
 						📚 Book Recommender
 					</h1>

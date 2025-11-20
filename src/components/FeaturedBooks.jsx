@@ -1,5 +1,6 @@
 import { Row, Col, Card } from 'react-bootstrap';
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../utils/apiUrl';
 import LibraryManager from './LibraryManager';
 
 function FeaturedBooks({ books, query, favourites = [], library = {}, onFavourite, onAddToLibrary }) {
@@ -23,7 +24,7 @@ function FeaturedBooks({ books, query, favourites = [], library = {}, onFavourit
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('/api/user/library', {
+      const response = await fetch(apiUrl('/api/user/library'), {
         method: 'GET',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -70,7 +71,7 @@ function FeaturedBooks({ books, query, favourites = [], library = {}, onFavourit
       if (!token) throw new Error('No authentication token found');
 
       // Use the simple library creation API
-      const response = await fetch('/api/user/library/list', {
+      const response = await fetch(apiUrl('/api/user/library/list'), {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,

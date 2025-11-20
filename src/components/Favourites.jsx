@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, Row, Col, Alert, Spinner } from "react-bootstrap";
+import { apiUrl } from '../utils/apiUrl';
 
 const Favourites = () => {
 	const [favourites, setFavourites] = useState([]);
@@ -22,7 +23,7 @@ const Favourites = () => {
 				return;
 			}
 
-			const response = await fetch('/api/user/favorites', {
+			const response = await fetch(apiUrl('/api/user/favorites'), {
 				method: 'GET',
 				headers: {
 					'Authorization': `Bearer ${token}`,
@@ -58,7 +59,7 @@ const Favourites = () => {
 				return;
 			}
 
-			const response = await fetch(`/api/user/favorites/${googleId}`, {
+			const response = await fetch(apiUrl(`/api/user/favorites/${googleId}`), {
 				method: 'DELETE',
 				headers: {
 					'Authorization': `Bearer ${token}`,

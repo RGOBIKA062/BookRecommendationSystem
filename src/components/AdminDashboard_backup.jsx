@@ -29,6 +29,8 @@ ChartJS.register(
   Filler
 );
 
+import { apiUrl } from '../utils/apiUrl';
+
 const fetchWithAuth = async (url, options = {}) => {
   const token = localStorage.getItem("token");
   return fetch(url, {
@@ -58,7 +60,7 @@ const AdminDashboard = () => {
   // Fetch System Analytics
   const fetchSystemAnalytics = useCallback(async () => {
     try {
-      const response = await fetchWithAuth("/api/analytics/system");
+      const response = await fetchWithAuth(apiUrl('/api/analytics/system'));
       const result = await response.json();
       if (result.success) {
         setSystemAnalytics(result.data);
@@ -71,7 +73,7 @@ const AdminDashboard = () => {
   // Fetch Favorite Books Analytics
   const fetchFavoriteAnalytics = useCallback(async () => {
     try {
-      const response = await fetchWithAuth("/api/analytics/favorites");
+      const response = await fetchWithAuth(apiUrl('/api/analytics/favorites'));
       const result = await response.json();
       if (result.success) {
         setFavoriteAnalytics(result.data);
@@ -84,7 +86,7 @@ const AdminDashboard = () => {
   // Fetch Users List
   const fetchUsers = useCallback(async () => {
     try {
-      const response = await fetchWithAuth("/api/analytics/users");
+      const response = await fetchWithAuth(apiUrl('/api/analytics/users'));
       const result = await response.json();
       if (result.success) {
         setUsers(result.data);
@@ -97,7 +99,7 @@ const AdminDashboard = () => {
   // Fetch Books List
   const fetchBooks = useCallback(async () => {
     try {
-      const response = await fetchWithAuth("/api/analytics/books");
+      const response = await fetchWithAuth(apiUrl('/api/analytics/books'));
       const result = await response.json();
       if (result.success) {
         setBooks(result.data);
@@ -110,7 +112,7 @@ const AdminDashboard = () => {
   // Fetch Charts Data
   const fetchChartsData = useCallback(async () => {
     try {
-      const response = await fetchWithAuth("/api/analytics/charts");
+      const response = await fetchWithAuth(apiUrl('/api/analytics/charts'));
       const result = await response.json();
       if (result.success) {
         setChartsData(result.data);
@@ -130,7 +132,7 @@ const AdminDashboard = () => {
   // Fetch Individual User Analytics
   const fetchUserAnalytics = useCallback(async (userId) => {
     try {
-      const response = await fetchWithAuth(`/api/analytics/user/${userId}`);
+      const response = await fetchWithAuth(apiUrl(`/api/analytics/user/${userId}`));
       const result = await response.json();
       if (result.success) {
         setUserAnalytics(result.data);

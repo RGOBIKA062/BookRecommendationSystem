@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from "react";
+import { apiUrl } from '../utils/apiUrl';
 
 const fetchWithAuth = async (url, options = {}) => {
 	const token = localStorage.getItem("token");
@@ -15,6 +16,9 @@ const fetchWithAuth = async (url, options = {}) => {
 
 const Admin = () => {
 	const [users, setUsers] = useState([]);
+	// Pagination state
+	const [currentPage, setCurrentPage] = useState(1);
+	const usersPerPage = 6;
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
 	const [activeTab, setActiveTab] = useState('overview');
@@ -31,9 +35,10 @@ const Admin = () => {
 		const fetchData = async () => {
 			setLoading(true);
 			try {
-				const usersRes = await fetchWithAuth("/api/admin/users");
+				const usersRes = await fetchWithAuth(apiUrl('/api/admin/users'));
 				const usersData = await usersRes.json();
 				setUsers(usersData);
+				setCurrentPage(1);
 				
 				// Calculate analytics
 				const activeUsers = usersData.filter(u => !u.isBlocked).length;
@@ -59,7 +64,7 @@ const Admin = () => {
 	const handleDeleteUser = async (id) => {
 		if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
 		try {
-			await fetchWithAuth(`/api/admin/users/${id}`, { method: "DELETE" });
+				await fetchWithAuth(apiUrl(`/api/admin/users/${id}`), { method: "DELETE" });
 			const updatedUsers = users.filter(u => u._id !== id);
 			setUsers(updatedUsers);
 			setAnalytics(prev => ({
@@ -78,7 +83,7 @@ const Admin = () => {
 		const action = currentBlockStatus ? "unblock" : "block";
 		if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
 		try {
-			const res = await fetchWithAuth(`/api/admin/users/${id}/block`, {
+			const res = await fetchWithAuth(apiUrl(`/api/admin/users/${id}/block`), {
 				method: "PUT",
 				body: JSON.stringify({ isBlocked: !currentBlockStatus }),
 			});
@@ -124,6 +129,25 @@ const Admin = () => {
 		} catch {
 			alert("Failed to reset user badges.");
 		}
+	};
+
+	// Pagination helpers
+	const indexOfLastUser = currentPage * usersPerPage;
+	const indexOfFirstUser = indexOfLastUser - usersPerPage;
+	const currentUsers = users.slice(indexOfFirstUser, indexOfLastUser);
+	const totalPages = Math.max(1, Math.ceil(users.length / usersPerPage));
+
+	const handleClickPage = (page) => {
+		if (page < 1 || page > totalPages) return;
+		setCurrentPage(page);
+	};
+
+	const handleNextPage = () => {
+		if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
+	};
+
+	const handlePrevPage = () => {
+		if (currentPage > 1) setCurrentPage(prev => prev - 1);
 	};
 
 	const renderOverview = () => (
@@ -210,98 +234,124 @@ const Admin = () => {
 									</tr>
 								</thead>
 								<tbody>
-									{users.map(user => (
-										<tr key={user._id} className="align-middle">
-											<td className="px-4 py-3">
-												<div className="d-flex align-items-center">
-													<div className="avatar me-3" style={{ 
-														width: '40px', 
-														height: '40px', 
-														borderRadius: '50%', 
-														background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-														display: 'flex',
-														alignItems: 'center',
-														justifyContent: 'center',
-														color: 'white',
-														fontWeight: 'bold'
-													}}>
+									{currentUsers.length > 0 ? (
+										currentUsers.map(user => (
+											<tr key={user._id} className="align-middle">
+												<td className="px-4 py-3">
+													<div className="d-flex align-items-center">
+														<div className="avatar me-3" style={{ 
+															width: '40px', 
+															height: '40px', 
+															borderRadius: '50%', 
+															background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+															display: 'flex',
+															alignItems: 'center',
+															justifyContent: 'center',
+															color: 'white',
+															fontWeight: 'bold'
+														}}>
 														{user.username?.charAt(0)?.toUpperCase()}
+														</div>
+														<div>
+															<div className="fw-bold">{user.username}</div>
+														</div>
 													</div>
-													<div>
-														<div className="fw-bold">{user.username}</div>
-													</div>
-												</div>
-											</td>
-											<td className="py-3">{user.email}</td>
-											<td className="py-3">
-												<span className={`badge ${user.role === 'admin' ? 'bg-warning text-dark' : 'bg-info'}`} 
+												</td>
+												<td className="py-3">{user.email}</td>
+												<td className="py-3">
+													<span className={`badge ${user.role === 'admin' ? 'bg-warning text-dark' : 'bg-info'}`} 
 													  style={{ borderRadius: '20px', padding: '8px 12px' }}>
 													{user.role === 'admin' ? '👑 Admin' : '👤 User'}
 												</span>
-											</td>
-											<td className="py-3">
-												<span className={`badge ${user.isBlocked ? 'bg-danger' : 'bg-success'}`}
+												</td>
+												<td className="py-3">
+													<span className={`badge ${user.isBlocked ? 'bg-danger' : 'bg-success'}`}
 													  style={{ borderRadius: '20px', padding: '8px 12px' }}>
 													{user.isBlocked ? '🚫 Blocked' : '✅ Active'}
 												</span>
-											</td>
-											<td className="py-3">
-												<small className="text-muted">
-													{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-												</small>
-											</td>
-											<td className="py-3">
-												<div className="btn-group">
-													<button 
-														className={`btn btn-sm ${user.isBlocked ? 'btn-success' : 'btn-warning'} me-2`}
-														onClick={() => handleBlockUser(user._id, user.isBlocked)}
-														style={{ borderRadius: '20px', minWidth: '80px' }}
-													>
-														{user.isBlocked ? '🔓 Unblock' : '🔒 Block'}
-													</button>
+												</td>
+												<td className="py-3">
+													<small className="text-muted">
+														{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+													</small>
+												</td>
+												<td className="py-3">
 													<div className="btn-group">
-														<button className="btn btn-outline-primary btn-sm dropdown-toggle" 
+														<button 
+															className={`btn btn-sm ${user.isBlocked ? 'btn-success' : 'btn-warning'} me-2`}
+															onClick={() => handleBlockUser(user._id, user.isBlocked)}
+															style={{ borderRadius: '20px', minWidth: '80px' }}
+														>
+														{user.isBlocked ? '🔓 Unblock' : '🔒 Block'}
+														</button>
+														<div className="btn-group">
+															<button className="btn btn-outline-primary btn-sm dropdown-toggle" 
 																type="button" 
 																data-bs-toggle="dropdown"
 																style={{ borderRadius: '20px' }}>
-															⚙️ More
-														</button>
-														<ul className="dropdown-menu">
-															<li>
-																<button className="dropdown-item" 
+																⚙️ More
+															</button>
+															<ul className="dropdown-menu">
+																<li>
+																	<button className="dropdown-item" 
 																		onClick={() => handleClearUserFavorites(user._id, user.username)}>
-																	❤️ Clear Favorites
-																</button>
-															</li>
-															<li>
-																<button className="dropdown-item" 
+																		❤️ Clear Favorites
+																	</button>
+																</li>
+																<li>
+																	<button className="dropdown-item" 
 																		onClick={() => handleClearUserLibrary(user._id, user.username)}>
-																	📚 Clear Library
-																</button>
-															</li>
-															<li>
-																<button className="dropdown-item" 
+																		📚 Clear Library
+																	</button>
+																</li>
+																<li>
+																	<button className="dropdown-item" 
 																		onClick={() => handleResetUserBadges(user._id, user.username)}>
-																	🏆 Reset Badges
-																</button>
-															</li>
-															<li><hr className="dropdown-divider" /></li>
-															<li>
-																<button className="dropdown-item text-danger" 
+																		🏆 Reset Badges
+																	</button>
+																</li>
+																<li><hr className="dropdown-divider" /></li>
+																<li>
+																	<button className="dropdown-item text-danger" 
 																		onClick={() => handleDeleteUser(user._id)}>
-																	🗑️ Delete User
-																</button>
-															</li>
-														</ul>
-													</div>
-												</div>
-											</td>
+																		🗑️ Delete User
+																	</button>
+																</li>
+																</ul>
+															</div>
+														</div>
+													</td>
+												</tr>
+										))
+									) : (
+										<tr>
+											<td colSpan="6">No users data available</td>
 										</tr>
-									))}
+									)}
 								</tbody>
 							</table>
 						</div>
 					</div>
+				</div>
+
+				{/* Pagination controls */}
+				<div className="d-flex justify-content-between align-items-center mt-3">
+					<div className="text-muted">Showing {indexOfFirstUser + 1 <= users.length ? indexOfFirstUser + 1 : 0} - {Math.min(indexOfLastUser, users.length)} of {users.length}</div>
+					<nav>
+						<ul className="pagination mb-0">
+							<li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+								<button className="page-link" onClick={handlePrevPage}>Previous</button>
+							</li>
+							{Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+								<li key={page} className={`page-item ${currentPage === page ? 'active' : ''}`}>
+									<button className="page-link" onClick={() => handleClickPage(page)}>{page}</button>
+								</li>
+							))}
+							<li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+								<button className="page-link" onClick={handleNextPage}>Next</button>
+							</li>
+						</ul>
+					</nav>
 				</div>
 			</section>
 		</div>

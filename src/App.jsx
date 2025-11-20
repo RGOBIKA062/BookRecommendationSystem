@@ -14,20 +14,16 @@ import Admin from "./components/Admin";
 import AdminDashboard from "./components/AdminDashboard_Premium";
 import Library from "./components/Library";
 import Chatbot from "./components/Chatbot";
-
-
 function App() {
   const location = useLocation();
   const showNavbar = location.pathname !== "/" && location.pathname !== "/login" && location.pathname !== "/signup";
-
   return (
     <AuthProvider>
       {showNavbar && <Navbar />}
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        
+        <Route path="/signup" element={<Signup />} />        
         {/* Protected Routes */}
         <Route path="/home" element={
           <ProtectedRoute>
@@ -68,5 +64,4 @@ function App() {
     </AuthProvider>
   );
 }
-
 export default App;

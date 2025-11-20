@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Card, Row, Col, Button, Modal, Form, Alert, Spinner } from "react-bootstrap";
+import { apiUrl } from '../utils/apiUrl';
 
 const Library = () => {
   const [library, setLibrary] = useState({});
@@ -23,7 +24,7 @@ const Library = () => {
         return;
       }
 
-      const response = await fetch('/api/user/library', {
+      const response = await fetch(apiUrl('/api/user/library'), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -59,7 +60,7 @@ const Library = () => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch('/api/user/library/initialize', {
+      const response = await fetch(apiUrl('/api/user/library/initialize'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -82,7 +83,7 @@ const Library = () => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch('/api/user/library/list', {
+      const response = await fetch(apiUrl('/api/user/library/list'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -114,7 +115,7 @@ const Library = () => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`/api/user/library/${encodeURIComponent(listName)}`, {
+      const response = await fetch(apiUrl(`/api/user/library/${encodeURIComponent(listName)}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -141,7 +142,7 @@ const Library = () => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`/api/user/library/${encodeURIComponent(listName)}/${googleId}`, {
+      const response = await fetch(apiUrl(`/api/user/library/${encodeURIComponent(listName)}/${googleId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

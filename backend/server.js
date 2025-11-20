@@ -29,6 +29,16 @@ app.use('/api/user', userBooksRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 
+// Health check for readiness / probes
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'ok',
+    env: process.env.NODE_ENV || 'development',
+    timestamp: Date.now()
+  });
+});
+
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/bookrecommendation';
 

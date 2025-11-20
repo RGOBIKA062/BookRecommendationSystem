@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { UserGrowthChart, FavoriteBooksChart } from './PremiumCharts';
 import './style/AdminDashboard_Premium.css';
+import { apiUrl } from '../utils/apiUrl';
 
 const AdminDashboard = () => {
   // State management
@@ -20,6 +21,9 @@ const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUsers, setSelectedUsers] = useState(new Set());
   const [showBulkActions, setShowBulkActions] = useState(false);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const usersPerPage = 6;
 
   // Helper function for authenticated API calls
   const fetchWithAuth = async (url, options = {}) => {
@@ -38,7 +42,7 @@ const AdminDashboard = () => {
   // Analytics API calls with error handling
   const fetchSystemAnalytics = useCallback(async () => {
     try {
-      const response = await fetchWithAuth('/api/admin/analytics/system');
+      const response = await fetchWithAuth(apiUrl('/api/admin/analytics/system'));
       const result = await response.json();
       if (result.success) {
         setSystemAnalytics(result.data);
@@ -51,7 +55,7 @@ const AdminDashboard = () => {
 
   const fetchMonthlyUserData = useCallback(async () => {
     try {
-      const response = await fetchWithAuth('/api/admin/analytics/users/monthly');
+      const response = await fetchWithAuth(apiUrl('/api/admin/analytics/users/monthly'));
       const result = await response.json();
       if (result.success) {
         setMonthlyUserData({
@@ -66,7 +70,7 @@ const AdminDashboard = () => {
 
   const fetchFavoriteBooksAnalytics = useCallback(async () => {
     try {
-      const response = await fetchWithAuth('/api/admin/analytics/books/favorites');
+      const response = await fetchWithAuth(apiUrl('/api/admin/analytics/books/favorites'));
       const result = await response.json();
       if (result.success) {
         setFavoriteBooksData({
@@ -82,7 +86,7 @@ const AdminDashboard = () => {
 
   const fetchUsersData = useCallback(async () => {
     try {
-      const response = await fetchWithAuth('/api/admin/users');
+      const response = await fetchWithAuth(apiUrl('/api/admin/users'));
       const usersData = await response.json();
       setUsers(usersData);
       setTotalUsers(usersData.length);
@@ -95,7 +99,7 @@ const AdminDashboard = () => {
   // Block/Unblock user handler
   const handleBlockUser = async (userId, isBlocked) => {
     try {
-      const response = await fetchWithAuth(`/api/admin/users/${userId}/block`, {
+      const response = await fetchWithAuth(apiUrl(`/api/admin/users/${userId}/block`), {
         method: 'PUT',
         body: JSON.stringify({ isBlocked }),
       });
@@ -153,6 +157,32 @@ const AdminDashboard = () => {
       user.email?.toLowerCase().includes(searchQuery.toLowerCase())
     ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   };
+
+  // Derived pagination values
+  const filteredUsers = filteredAndSortedUsers();
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / usersPerPage));
+  const indexOfFirstUser = (currentPage - 1) * usersPerPage;
+  const indexOfLastUser = currentPage * usersPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+
+  // Pagination handlers
+  const handleClickPage = (page) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(prev => prev - 1);
+  };
+
+  // Reset to first page when filter or users change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, users.length]);
 
   // Initialize dashboard
   useEffect(() => {
@@ -241,7 +271,27 @@ const AdminDashboard = () => {
         <div className="chart-container">
           <h3>📚 Most Favorited Books</h3>
           <div className="chart-wrapper">
-            <FavoriteBooksChart data={favoriteBooksData} />
+            {/** Pass only top 4 entries to the chart for clarity */}
+            <FavoriteBooksChart data={{
+              labels: (favoriteBooksData.labels || []).slice(0, 4),
+              counts: (favoriteBooksData.counts || []).slice(0, 4)
+            }} />
+          </div>
+
+          {/** Show a compact list of top 4 books underneath the chart */}
+          <div className="top-books-list" style={{ marginTop: '12px' }}>
+            {(favoriteBooksData.books || []).slice(0, 4).map((book, idx) => (
+              <div key={book._id || book.id || idx} className="top-book-item" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0', borderBottom: '1px solid rgba(0,0,0,0.04)'}}>
+                <div className="rank" style={{ fontWeight: '700', width: '28px' }}>#{idx + 1}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600 }}>{book.title || book.name || 'Untitled'}</div>
+                </div>
+                <div style={{ textAlign: 'right', minWidth: '90px' }}>
+                  <div style={{ fontWeight: 700 }}>{book.favoriteCount ?? book.count ?? favoriteBooksData.counts?.[idx] ?? '-'}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#6c757d' }}>favorites</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -311,7 +361,7 @@ const AdminDashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredAndSortedUsers().slice(0, 20).map((user) => (
+            {currentUsers.map((user) => (
               <tr key={user._id} className={`table-row ${selectedUsers.has(user._id) ? 'selected' : ''}`}>
                 <td>
                   <input 
@@ -353,19 +403,19 @@ const AdminDashboard = () => {
             ))}
           </tbody>
         </table>
-      </div>
+          </div>
 
       {/* Pagination */}
-      <div className="pagination">
+      <div className="pagination d-flex justify-content-between align-items-center">
         <div className="pagination-info">
-          Showing {Math.min(20, filteredAndSortedUsers().length)} of {filteredAndSortedUsers().length} users
+          Showing {filteredUsers.length === 0 ? 0 : indexOfFirstUser + 1} - {Math.min(indexOfLastUser, filteredUsers.length)} of {filteredUsers.length} users
         </div>
         <div className="pagination-controls">
-          <button className="page-btn">← Previous</button>
-          <button className="page-btn active">1</button>
-          <button className="page-btn">2</button>
-          <button className="page-btn">3</button>
-          <button className="page-btn">Next →</button>
+          <button className="page-btn" onClick={handlePrevPage} disabled={currentPage === 1}>← Previous</button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            <button key={page} className={`page-btn ${currentPage === page ? 'active' : ''}`} onClick={() => handleClickPage(page)}>{page}</button>
+          ))}
+          <button className="page-btn" onClick={handleNextPage} disabled={currentPage === totalPages}>Next →</button>
         </div>
       </div>
     </div>

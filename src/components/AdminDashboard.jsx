@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './style/AdminDashboard.css';
+import { apiUrl } from '../utils/apiUrl';
 
 const AdminDashboard = () => {
   // State management
@@ -36,7 +37,7 @@ const AdminDashboard = () => {
   // Analytics API calls
   const fetchSystemAnalytics = useCallback(async () => {
     try {
-      const response = await fetchWithAuth('/api/analytics/system');
+      const response = await fetchWithAuth(apiUrl('/api/analytics/system'));
       const result = await response.json();
       if (result.success) {
         setSystemAnalytics(result.data);
@@ -49,7 +50,7 @@ const AdminDashboard = () => {
 
   const fetchFavoriteAnalytics = useCallback(async () => {
     try {
-      const response = await fetchWithAuth('/api/analytics/favorites');
+      const response = await fetchWithAuth(apiUrl('/api/analytics/favorites'));
       const result = await response.json();
       if (result.success) {
         setFavoriteAnalytics(result.data);
@@ -75,7 +76,7 @@ const AdminDashboard = () => {
 
   const fetchUserAnalytics = useCallback(async (userId) => {
     try {
-      const response = await fetchWithAuth(`/api/analytics/user/${userId}`);
+      const response = await fetchWithAuth(apiUrl(`/api/analytics/user/${userId}`));
       const result = await response.json();
       if (result.success) {
         setUserAnalytics(result.data);
@@ -88,7 +89,7 @@ const AdminDashboard = () => {
   // Management API calls
   const fetchUsersData = useCallback(async () => {
     try {
-      const response = await fetchWithAuth("/api/analytics/users");
+      const response = await fetchWithAuth(apiUrl('/api/analytics/users'));
       const result = await response.json();
       if (result.success) {
         setUsers(result.data || []);
@@ -102,7 +103,7 @@ const AdminDashboard = () => {
 
   const fetchBooksData = useCallback(async () => {
     try {
-      const response = await fetchWithAuth("/api/analytics/books");
+      const response = await fetchWithAuth(apiUrl('/api/analytics/books'));
       const result = await response.json();
       if (result.success) {
         setBooks(result.data || []);
