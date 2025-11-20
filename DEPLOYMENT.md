@@ -73,6 +73,17 @@ Health-check endpoint
 - The backend now exposes `GET /api/health` which returns a JSON payload indicating service readiness.
 - Use it to verify your Render deployment quickly: `curl https://your-backend.onrender.com/api/health` should return `{ "success": true, "status": "ok", ... }`.
 
+CORS configuration
+- To restrict which frontend origins can call the backend, set either `FRONTEND_URL` to a single origin (e.g., `https://your-frontend.vercel.app`) or `ALLOWED_ORIGINS` to a comma-separated list of allowed origins (e.g., `https://app.example.com,https://staging.example.com`).
+- If neither is provided, the backend remains permissive to ease local development but you should set them in production.
+
+Render `env` names to set:
+- `MONGO_URI` (required) — MongoDB connection string
+- `JWT_SECRET` (required) — secure random secret
+- `OPENAI_API_KEY` (optional)
+- `GROQ_API_KEY` (optional)
+- `FRONTEND_URL` or `ALLOWED_ORIGINS` (recommended for production CORS)
+
 If you'd like, I can:
 - Add a sample `render.yaml` for fully reproducible Render infra.
 - Create a `vercel.json` with routes (not required for a standard Vite app).

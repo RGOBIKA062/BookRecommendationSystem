@@ -19,7 +19,24 @@ import analyticsRoutes from './routes/analytics.js';
 import chatbotRoutes from './routes/chatbot.js';
 
 const app = express();
-app.use(cors());
+// Configure CORS: allow explicit frontend origins via env var, otherwise remain permissive for development
+const rawAllowed = process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '';
+const allowedOrigins = rawAllowed.split(',').map(s => s.trim()).filter(Boolean);
+console.log('🔧 Allowed CORS origins:', allowedOrigins.length ? allowedOrigins : 'any (development)');
+
+if (allowedOrigins.length) {
+  app.use(cors({
+    origin: (origin, callback) => {
+      // allow non-browser requests like curl (no origin)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error('CORS policy: origin not allowed'));
+    }
+  }));
+} else {
+  // development: allow all origins
+  app.use(cors());
+}
 app.use(express.json());
 
 // Routes
