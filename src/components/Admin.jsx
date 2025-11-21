@@ -1,6 +1,5 @@
 
 import React, { useEffect, useState } from "react";
-import { apiUrl } from '../utils/apiUrl';
 
 const fetchWithAuth = async (url, options = {}) => {
 	const token = localStorage.getItem("token");
@@ -35,7 +34,7 @@ const Admin = () => {
 		const fetchData = async () => {
 			setLoading(true);
 			try {
-				const usersRes = await fetchWithAuth(apiUrl('/api/admin/users'));
+				const usersRes = await fetchWithAuth("/api/admin/users");
 				const usersData = await usersRes.json();
 				setUsers(usersData);
 				setCurrentPage(1);
@@ -64,7 +63,7 @@ const Admin = () => {
 	const handleDeleteUser = async (id) => {
 		if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
 		try {
-				await fetchWithAuth(apiUrl(`/api/admin/users/${id}`), { method: "DELETE" });
+			await fetchWithAuth(`/api/admin/users/${id}`, { method: "DELETE" });
 			const updatedUsers = users.filter(u => u._id !== id);
 			setUsers(updatedUsers);
 			setAnalytics(prev => ({
@@ -83,7 +82,7 @@ const Admin = () => {
 		const action = currentBlockStatus ? "unblock" : "block";
 		if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
 		try {
-			const res = await fetchWithAuth(apiUrl(`/api/admin/users/${id}/block`), {
+			const res = await fetchWithAuth(`/api/admin/users/${id}/block`, {
 				method: "PUT",
 				body: JSON.stringify({ isBlocked: !currentBlockStatus }),
 			});
@@ -228,7 +227,7 @@ const Admin = () => {
 										<th className="border-0 py-3 px-4">Name</th>
 										<th className="border-0 py-3">Email</th>
 										<th className="border-0 py-3">Role</th>
-										<th className="border-0 py-3">Status</th>
+                                        
 										<th className="border-0 py-3">Joined</th>
 										<th className="border-0 py-3">Actions</th>
 									</tr>
@@ -264,12 +263,7 @@ const Admin = () => {
 													{user.role === 'admin' ? '👑 Admin' : '👤 User'}
 												</span>
 												</td>
-												<td className="py-3">
-													<span className={`badge ${user.isBlocked ? 'bg-danger' : 'bg-success'}`}
-													  style={{ borderRadius: '20px', padding: '8px 12px' }}>
-													{user.isBlocked ? '🚫 Blocked' : '✅ Active'}
-												</span>
-												</td>
+                                                
 												<td className="py-3">
 													<small className="text-muted">
 														{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
@@ -325,7 +319,7 @@ const Admin = () => {
 										))
 									) : (
 										<tr>
-											<td colSpan="6">No users data available</td>
+											<td colSpan="5">No users data available</td>
 										</tr>
 									)}
 								</tbody>

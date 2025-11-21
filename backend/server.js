@@ -19,24 +19,7 @@ import analyticsRoutes from './routes/analytics.js';
 import chatbotRoutes from './routes/chatbot.js';
 
 const app = express();
-// Configure CORS: allow explicit frontend origins via env var, otherwise remain permissive for development
-const rawAllowed = process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '';
-const allowedOrigins = rawAllowed.split(',').map(s => s.trim()).filter(Boolean);
-console.log('🔧 Allowed CORS origins:', allowedOrigins.length ? allowedOrigins : 'any (development)');
-
-if (allowedOrigins.length) {
-  app.use(cors({
-    origin: (origin, callback) => {
-      // allow non-browser requests like curl (no origin)
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error('CORS policy: origin not allowed'));
-    }
-  }));
-} else {
-  // development: allow all origins
-  app.use(cors());
-}
+app.use(cors());
 app.use(express.json());
 
 // Routes
@@ -46,23 +29,58 @@ app.use('/api/user', userBooksRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 
-// Health check for readiness / probes
-app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    status: 'ok',
-    env: process.env.NODE_ENV || 'development',
-    timestamp: Date.now()
-  });
-});
-
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT, 10) || 5001;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/bookrecommendation';
 
 mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+    // Global error handlers for better diagnostics
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('Unhandled Rejection at:', promise, 'reason:', reason);
     });
+
+    process.on('uncaughtException', (err) => {
+      console.error('Uncaught Exception thrown:', err);
+      // Recommended to exit after uncaught exception in Node apps
+      process.exit(1);
+    });
+
+    // Try to listen on desired port. If port is in use, try next ports up to a limit.
+    const maxAttempts = 10;
+    let attempts = 0;
+
+    const tryListen = (portToTry) => {
+      attempts += 1;
+      const server = app.listen(portToTry);
+
+      server.on('listening', () => {
+        const host = process.env.HOST || 'localhost';
+        console.log(`Server running on port ${portToTry}`);
+        console.log(`Accessible at: http://${host}:${portToTry}/`);
+      });
+
+      server.on('error', (err) => {
+        if (err && err.code === 'EADDRINUSE') {
+          console.warn(`Port ${portToTry} is already in use.`);
+          if (attempts < maxAttempts) {
+            const nextPort = portToTry + 1;
+            console.log(`Trying port ${nextPort}... (${attempts}/${maxAttempts})`);
+            // small delay before retrying to avoid tight loop
+            setTimeout(() => tryListen(nextPort), 200);
+          } else {
+            console.error(`No available ports found in range ${PORT}-${portToTry}. Exiting.`);
+            process.exit(1);
+          }
+        } else {
+          console.error('Server error:', err);
+          process.exit(1);
+        }
+      });
+    };
+
+    tryListen(PORT);
   })
-  .catch((err) => console.error('MongoDB connection error:', err));
+  .catch((err) => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+  });

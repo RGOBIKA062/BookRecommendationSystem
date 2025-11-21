@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './style/AdminDashboard.css';
-import { apiUrl } from '../utils/apiUrl';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const AdminDashboard = () => {
   // State management
@@ -16,6 +17,7 @@ const AdminDashboard = () => {
   
   // Management data states
   const [users, setUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState(new Set());
   const [books, setBooks] = useState([]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalBooks, setTotalBooks] = useState(0);
@@ -37,7 +39,7 @@ const AdminDashboard = () => {
   // Analytics API calls
   const fetchSystemAnalytics = useCallback(async () => {
     try {
-      const response = await fetchWithAuth(apiUrl('/api/analytics/system'));
+      const response = await fetchWithAuth('/api/analytics/system');
       const result = await response.json();
       if (result.success) {
         setSystemAnalytics(result.data);
@@ -48,9 +50,264 @@ const AdminDashboard = () => {
     }
   }, []);
 
+  // Helper: fetch detailed user analytics (used for export)
+  const fetchUserFullData = useCallback(async (userId) => {
+    try {
+      // Use export endpoint which contains favorites, libraries and reviews
+      const response = await fetchWithAuth(`/api/analytics/export/user/${userId}`);
+      const result = await response.json();
+      if (result.success) return result.data;
+      // fallback: try to find in users list
+      return users.find(u => u._id === userId) || null;
+    } catch (err) {
+      console.error('Error fetching full user data:', err);
+      return users.find(u => u._id === userId) || null;
+    }
+  }, [users]);
+
+  // PDF generation helpers
+  const generatePdfFromUserData = (userData, filename) => {
+    try {
+      const doc = new jsPDF();
+      const title = `User Export - ${userData.user?.username || userData.username || 'user'}`;
+      doc.setFontSize(16);
+      doc.text(title, 14, 20);
+
+      // Basic info key/value pairs
+      const userObj = userData.user || {};
+      const info = [
+        ['ID', userObj._id || userObj.id || userData._id || userData.id || 'N/A'],
+        ['Username', userObj.username || userObj.name || userData.username || userData.name || 'N/A'],
+        ['Email', userObj.email || userData.email || 'N/A'],
+        ['Role', userObj.role || userData.role || 'user'],
+        ['Joined', userObj.createdAt ? new Date(userObj.createdAt).toLocaleString() : (userObj.joinDate ? new Date(userObj.joinDate).toLocaleString() : (userData.createdAt ? new Date(userData.createdAt).toLocaleString() : (userData.joinDate ? new Date(userData.joinDate).toLocaleString() : 'N/A')))],
+      ];
+
+      // Convert info to autotable rows
+      doc.autoTable({
+        startY: 28,
+        theme: 'plain',
+        head: [['Field', 'Value']],
+        body: info,
+        styles: { cellPadding: 2, fontSize: 10 }
+      });
+
+      let nextY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 6 : 60;
+
+      // Add favorites/library/reviews if available (support multiple backend shapes)
+      const favorites = userData.favorites || userData.favoriteBooks || userData.favoriteBooks || [];
+      if (favorites && favorites.length > 0) {
+        doc.setFontSize(12);
+        doc.text('Favorites', 14, nextY);
+        nextY += 4;
+        const favRows = favorites.map(f => [f.title || f.bookTitle || f.name || 'N/A', (f.author || (f.authors ? (Array.isArray(f.authors) ? f.authors.join(', ') : f.authors) : '') || 'N/A')]);
+        doc.autoTable({ startY: nextY, head: [['Title', 'Author']], body: favRows, styles: { fontSize: 10 } });
+        nextY = doc.lastAutoTable.finalY + 6;
+      }
+
+      // Support multiple possible shapes returned by backend: `libraries` (array of lists), or single `library`/`libraryList`
+      const libraries = userData.libraries || userData.library || userData.libraryList || [];
+      if (libraries && libraries.length > 0) {
+        doc.setFontSize(12);
+        doc.text('Library', 14, nextY);
+        nextY += 6;
+
+        // If libraries is an array of lists (each with listName and books), render each list separately
+        if (libraries[0] && (libraries[0].listName || libraries[0].books)) {
+          for (const lib of libraries) {
+            const listName = lib.listName || 'Library';
+            doc.setFontSize(11);
+            doc.text(listName, 14, nextY);
+            nextY += 4;
+            const booksInList = lib.books || [];
+              if (booksInList.length > 0) {
+              const libRows = booksInList.map(b => [b.title || b.bookTitle || b.name || 'N/A']);
+              doc.autoTable({ startY: nextY, head: [['Title']], body: libRows, styles: { fontSize: 9 } });
+              nextY = doc.lastAutoTable.finalY + 6;
+            } else {
+              doc.setFontSize(9);
+              doc.text('No books in this list', 14, nextY);
+              nextY += 8;
+            }
+          }
+        } else {
+          // Fallback: libraries is a flat array of books
+          const libRows = libraries.map(b => [b.title || b.bookTitle || b.name || 'N/A']);
+          doc.autoTable({ startY: nextY, head: [['Title']], body: libRows, styles: { fontSize: 10 } });
+          nextY = doc.lastAutoTable.finalY + 6;
+        }
+      }
+
+      const reviews = userData.reviews || userData.userReviews || [];
+      // If controller returned metrics with review counts, include them as a small table
+      if (userData.metrics) {
+        doc.setFontSize(12);
+        doc.text('Metrics', 14, nextY);
+        nextY += 4;
+        const mrows = [
+          ['Total Favorites', userData.metrics.totalFavorites || 'N/A'],
+          ['Total Reviews', userData.metrics.totalReviews || 'N/A'],
+          ['Average Rating', userData.metrics.averageRating || 'N/A']
+        ];
+        doc.autoTable({ startY: nextY, head: [['Metric', 'Value']], body: mrows, styles: { fontSize: 10 } });
+        nextY = doc.lastAutoTable.finalY + 6;
+      }
+
+      if (reviews && reviews.length > 0) {
+        doc.setFontSize(12);
+        doc.text('Reviews', 14, nextY);
+        nextY += 4;
+        const revRows = reviews.map(r => [r.bookTitle || (r.book && r.book.title) || r.title || 'N/A', (r.rating != null ? r.rating : 'N/A'), (r.comment || r.text || '').slice(0, 200)]);
+        doc.autoTable({ startY: nextY, head: [['Book', 'Rating', 'Comment']], body: revRows, styles: { fontSize: 9 } });
+        nextY = doc.lastAutoTable.finalY + 6;
+      }
+
+      doc.save(filename || `${title}.pdf`);
+    } catch (err) {
+      console.error('Error generating PDF', err);
+      alert('Failed to generate PDF. See console for details.');
+    }
+  };
+
+  const exportUserPDF = async (userId) => {
+    const data = await fetchUserFullData(userId);
+    if (!data) return alert('User data not found for export');
+    const filename = `user_${userId}.pdf`;
+    generatePdfFromUserData(data, filename);
+  };
+
+  const exportSelectedUsers = async () => {
+    if (!selectedUsers || selectedUsers.size === 0) return alert('No users selected for export');
+    const ids = Array.from(selectedUsers);
+    const filename = `users_selected_${Date.now()}.pdf`;
+    await generateCombinedPdfForUsers(ids, filename);
+  };
+
+  const exportAllUsers = async () => {
+    if (!users || users.length === 0) return alert('No users available to export');
+    const ids = users.map(u => u._id);
+    const filename = `users_all_${Date.now()}.pdf`;
+    await generateCombinedPdfForUsers(ids, filename);
+  };
+
+  // Generate one PDF containing multiple users (one user per page)
+  const generateCombinedPdfForUsers = async (userIds, filename) => {
+    try {
+      const docsData = await Promise.all(userIds.map(id => fetchUserFullData(id)));
+      const doc = new jsPDF();
+
+      for (let i = 0; i < docsData.length; i++) {
+        const userData = docsData[i];
+        if (!userData) continue;
+
+        if (i > 0) doc.addPage();
+
+        const title = `User Export - ${userData.user?.username || userData.username || 'user'}`;
+        doc.setFontSize(16);
+        doc.text(title, 14, 20);
+
+        const userObj = userData.user || {};
+        const info = [
+          ['ID', userObj._id || userObj.id || userData._id || userData.id || 'N/A'],
+          ['Username', userObj.username || userObj.name || userData.username || userData.name || 'N/A'],
+          ['Email', userObj.email || userData.email || 'N/A'],
+          ['Role', userObj.role || userData.role || 'user'],
+          ['Joined', userObj.createdAt ? new Date(userObj.createdAt).toLocaleString() : (userObj.joinDate ? new Date(userObj.joinDate).toLocaleString() : (userData.createdAt ? new Date(userData.createdAt).toLocaleString() : 'N/A'))],
+        ];
+
+        doc.autoTable({ startY: 28, theme: 'plain', head: [['Field', 'Value']], body: info, styles: { cellPadding: 2, fontSize: 10 } });
+        let nextY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 6 : 60;
+
+        const favorites = userData.favorites || userData.favoriteBooks || [];
+        if (favorites && favorites.length > 0) {
+          doc.setFontSize(12);
+          doc.text('Favorites', 14, nextY);
+          nextY += 4;
+          const favRows = favorites.map(f => [f.title || f.bookTitle || f.name || 'N/A', (f.author || (f.authors ? (Array.isArray(f.authors) ? f.authors.join(', ') : f.authors) : '') || 'N/A')]);
+          doc.autoTable({ startY: nextY, head: [['Title', 'Author']], body: favRows, styles: { fontSize: 10 } });
+          nextY = doc.lastAutoTable.finalY + 6;
+        }
+
+        const library = userData.libraries || userData.library || userData.libraryList || [];
+        if (library && library.length > 0) {
+          doc.setFontSize(12);
+          doc.text('Library', 14, nextY);
+          nextY += 6;
+
+          if (library[0] && (library[0].listName || library[0].books)) {
+            for (const lib of library) {
+              const listName = lib.listName || 'Library';
+              doc.setFontSize(11);
+              doc.text(listName, 14, nextY);
+              nextY += 4;
+              const booksInList = lib.books || [];
+              if (booksInList.length > 0) {
+                const libRows = booksInList.map(b => [b.title || b.bookTitle || b.name || 'N/A']);
+                doc.autoTable({ startY: nextY, head: [['Title']], body: libRows, styles: { fontSize: 9 } });
+                nextY = doc.lastAutoTable.finalY + 6;
+              } else {
+                doc.setFontSize(9);
+                doc.text('No books in this list', 14, nextY);
+                nextY += 8;
+              }
+            }
+          } else {
+            const libRows = library.map(b => [b.title || b.bookTitle || b.name || 'N/A']);
+              doc.autoTable({ startY: nextY, head: [['Title']], body: libRows, styles: { fontSize: 10 } });
+            nextY = doc.lastAutoTable.finalY + 6;
+          }
+        }
+
+        const reviews = userData.reviews || userData.userReviews || [];
+        if (userData.metrics) {
+          doc.setFontSize(12);
+          doc.text('Metrics', 14, nextY);
+          nextY += 4;
+          const mrows = [
+            ['Total Favorites', userData.metrics.totalFavorites || 'N/A'],
+            ['Total Reviews', userData.metrics.totalReviews || 'N/A'],
+            ['Average Rating', userData.metrics.averageRating || 'N/A']
+          ];
+          doc.autoTable({ startY: nextY, head: [['Metric', 'Value']], body: mrows, styles: { fontSize: 10 } });
+          nextY = doc.lastAutoTable.finalY + 6;
+        }
+
+        if (reviews && reviews.length > 0) {
+          doc.setFontSize(12);
+          doc.text('Reviews', 14, nextY);
+          nextY += 4;
+          const revRows = reviews.map(r => [r.bookTitle || (r.book && r.book.title) || r.title || 'N/A', (r.rating != null ? r.rating : 'N/A'), (r.comment || r.text || '').slice(0, 200)]);
+          doc.autoTable({ startY: nextY, head: [['Book', 'Rating', 'Comment']], body: revRows, styles: { fontSize: 9 } });
+          nextY = doc.lastAutoTable.finalY + 6;
+        }
+      }
+
+      doc.save(filename || `users_export_${Date.now()}.pdf`);
+    } catch (err) {
+      console.error('Error generating combined PDF', err);
+      alert('Failed to generate PDF. See console for details.');
+    }
+  };
+
+  const toggleSelectUser = (userId) => {
+    setSelectedUsers(prev => {
+      const copy = new Set(prev);
+      if (copy.has(userId)) copy.delete(userId);
+      else copy.add(userId);
+      return copy;
+    });
+  };
+
+  const selectAllOnPage = () => {
+    if (!users || users.length === 0) return;
+    const allSelected = users.every(u => selectedUsers.has(u._id));
+    if (allSelected) setSelectedUsers(new Set());
+    else setSelectedUsers(new Set(users.map(u => u._id)));
+  };
+
   const fetchFavoriteAnalytics = useCallback(async () => {
     try {
-      const response = await fetchWithAuth(apiUrl('/api/analytics/favorites'));
+      const response = await fetchWithAuth('/api/analytics/favorites');
       const result = await response.json();
       if (result.success) {
         setFavoriteAnalytics(result.data);
@@ -76,7 +333,7 @@ const AdminDashboard = () => {
 
   const fetchUserAnalytics = useCallback(async (userId) => {
     try {
-      const response = await fetchWithAuth(apiUrl(`/api/analytics/user/${userId}`));
+      const response = await fetchWithAuth(`/api/analytics/user/${userId}`);
       const result = await response.json();
       if (result.success) {
         setUserAnalytics(result.data);
@@ -89,7 +346,7 @@ const AdminDashboard = () => {
   // Management API calls
   const fetchUsersData = useCallback(async () => {
     try {
-      const response = await fetchWithAuth(apiUrl('/api/analytics/users'));
+      const response = await fetchWithAuth("/api/analytics/users");
       const result = await response.json();
       if (result.success) {
         setUsers(result.data || []);
@@ -103,7 +360,7 @@ const AdminDashboard = () => {
 
   const fetchBooksData = useCallback(async () => {
     try {
-      const response = await fetchWithAuth(apiUrl('/api/analytics/books'));
+      const response = await fetchWithAuth("/api/analytics/books");
       const result = await response.json();
       if (result.success) {
         setBooks(result.data || []);
@@ -331,6 +588,9 @@ const AdminDashboard = () => {
         >
           Refresh Users
         </button>
+        <button className="bulk-btn export" onClick={exportAllUsers}>Export All</button>
+        <button className="bulk-btn export" onClick={exportSelectedUsers}>Export Selected</button>
+        <button className="bulk-btn select-all" onClick={selectAllOnPage}>Toggle Select All</button>
         <span className="total-count">Total Users: {totalUsers}</span>
       </div>
       
@@ -338,6 +598,7 @@ const AdminDashboard = () => {
         <table className="management-table">
           <thead>
             <tr>
+              <th style={{width: '40px'}}><input type="checkbox" onChange={selectAllOnPage} checked={users.length>0 && users.every(u => selectedUsers.has(u._id))} /></th>
               <th>ID</th>
               <th>Username</th>
               <th>Email</th>
@@ -351,6 +612,13 @@ const AdminDashboard = () => {
             {users.length > 0 ? (
               users.map((user) => (
                 <tr key={user._id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedUsers.has(user._id)}
+                      onChange={() => toggleSelectUser(user._id)}
+                    />
+                  </td>
                   <td>{user._id}</td>
                   <td>{user.username}</td>
                   <td>{user.email}</td>
@@ -364,12 +632,13 @@ const AdminDashboard = () => {
                   <td>
                     <button className="action-btn view-btn">View</button>
                     <button className="action-btn edit-btn">Edit</button>
+                    <button className="action-btn export-btn" onClick={() => exportUserPDF(user._id)}>Export</button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="7">No users data available</td>
+                <td colSpan="8">No users data available</td>
               </tr>
             )}
           </tbody>

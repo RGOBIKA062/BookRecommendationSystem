@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { apiUrl } from '../utils/apiUrl';
 import './style/Chatbot.css';
 
 const Chatbot = () => {
@@ -95,7 +94,7 @@ const Chatbot = () => {
       
       // First, check if user has existing conversations
       console.log('🔍 Checking for existing conversations...');
-      const conversationsResponse = await fetchWithAuth(apiUrl('/api/chatbot/conversations'));
+      const conversationsResponse = await fetchWithAuth('/api/chatbot/conversations');
       const conversationsData = await conversationsResponse.json();
       
       if (conversationsData.success && conversationsData.data && conversationsData.data.length > 0) {
@@ -135,7 +134,7 @@ const Chatbot = () => {
 
   const loadExistingConversation = async (selectedSessionId) => {
     try {
-      const response = await fetchWithAuth(apiUrl(`/api/chatbot/conversation/${selectedSessionId}`));
+      const response = await fetchWithAuth(`/api/chatbot/conversation/${selectedSessionId}`);
       const data = await response.json();
       
       if (data.success) {
@@ -166,7 +165,7 @@ const Chatbot = () => {
 
   const createNewConversation = async () => {
     try {
-      const response = await fetchWithAuth(apiUrl('/api/chatbot/conversation'), {
+      const response = await fetchWithAuth('/api/chatbot/conversation', {
         method: 'POST'
       });
 
@@ -207,7 +206,7 @@ const Chatbot = () => {
 
   const loadConversations = async () => {
     try {
-      const response = await fetchWithAuth(apiUrl('/api/chatbot/conversations'));
+      const response = await fetchWithAuth('/api/chatbot/conversations');
       const data = await response.json();
       
       if (data.success) {
@@ -241,7 +240,7 @@ const Chatbot = () => {
     setError('');
 
     try {
-      const response = await fetchWithAuth(apiUrl(`/api/chatbot/conversation/${sessionId}/message`), {
+      const response = await fetchWithAuth(`/api/chatbot/conversation/${sessionId}/message`, {
         method: 'POST',
         body: JSON.stringify({ sessionId, message: userMessage.content })
       });
