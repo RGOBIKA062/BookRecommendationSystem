@@ -84,7 +84,7 @@ const BookRecommendation = () => {
 			
 			if (isCurrentlyFav) {
 				// Remove from favorites
-				const response = await fetch(`http://localhost:5000/api/user/favorites/${book.googleId}`, {
+				const response = await fetch(`/api/user/favorites/${book.googleId}`, {
 					method: 'DELETE',
 					headers: {
 						'Authorization': `Bearer ${token}`,

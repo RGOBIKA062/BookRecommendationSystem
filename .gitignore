@@ -1,0 +1,26 @@
+# Dependencies
+**/node_modules/
+
+# Build outputs
+frontend/dist/
+frontend/build/
+
+# Environment files (never commit real secrets)
+backend/.env.local
+backend/.env.*.local
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Keep example env templates
+!frontend/.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
