@@ -3,7 +3,8 @@ import {
   getSystemAnalytics,
   getUserAnalytics,
   getFavoriteBookAnalytics,
-  getUserActivityCharts
+  getUserActivityCharts,
+  getUserExportData
 } from '../controllers/analyticsController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import User from '../models/User.js';
@@ -33,6 +34,9 @@ router.get('/system', getSystemAnalytics);
 
 // Individual User Analytics
 router.get('/user/:userId', getUserAnalytics);
+
+// Full user export data (includes favorites, libraries, reviews)
+router.get('/export/user/:userId', getUserExportData);
 
 // Most Favorite Books Analysis
 router.get('/favorites', getFavoriteBookAnalytics);

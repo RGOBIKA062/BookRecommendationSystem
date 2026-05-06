@@ -423,9 +423,36 @@ async function getUserEngagementMetrics() {
   };
 }
 
+// Full user export data (user details, favorites, library lists, reviews)
+const getUserExportData = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId).select('-password');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const userFavorites = await UserFavourite.findOne({ userId });
+    const userLibraries = await LibraryList.find({ userId });
+    const userReviews = await Review.find({ userId }).populate('bookId', 'title authors');
+
+    res.json({
+      success: true,
+      data: {
+        user,
+        favorites: userFavorites ? userFavorites.books : [],
+        libraries: userLibraries || [],
+        reviews: userReviews || []
+      }
+    });
+  } catch (error) {
+    console.error('User export data error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch user export data', error: error.message });
+  }
+};
+
 export {
   getSystemAnalytics,
   getUserAnalytics,
   getFavoriteBookAnalytics,
-  getUserActivityCharts
+  getUserActivityCharts,
+  getUserExportData
 };
